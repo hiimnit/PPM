@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <unistd.h>
 #include <time.h>
+#include <cstdio>
 
 using namespace std;
 
@@ -46,19 +47,25 @@ void add(const int x) {
 bool readFile(const char * in_file, int * __restrict__ s1, int * __restrict__ s2) {
     ifstream ifs(in_file, ifstream::in | ifstream::binary);
 
-    if(!ifs.is_open()) {
+    FILE * in = fopen(in_file, "r");
+
+    if(in == NULL) {
         cout << "reading err" << endl;
         return false;
     }
 
     string P6;
     int s255, size;
+    char buffer [100];
 
-    ifs >> P6;      // prvni line "P6"
-    ifs >> * s1;    // prvni rozmer
-    ifs >> * s2;    // druhy rozmer
-    ifs >> s255;    // cislo "255"
-    ifs.get();      // nacteni newline
+    fgets(buffer, 100, in); // prvni line "P6"
+    cout << buffer;
+    fscanf(in, "%d", &*s1); // prvni rozmer
+    fscanf(in, "%d", &*s2); // druhy rozmer
+    fgets(buffer, 100, in); // 255
+    fgets(buffer, 100, in); // 255
+
+    cout << buffer;
 
     size = *s1 * *s2;
     image_in = new img(size);
@@ -66,31 +73,32 @@ bool readFile(const char * in_file, int * __restrict__ s1, int * __restrict__ s2
     uint8_t r, g, b;
 
     for (int i = 0; i < size; ++i) {
-        r = ifs.get();
-        g = ifs.get();
-        b = ifs.get();
+        r = fgetc(in);
+        g = fgetc(in);
+        b = fgetc(in);
         image_in->add(r, g, b);
     }
 
-    ifs.close();
+    fclose(in);
     return true;
 }
 
 void do_magic(const char * out_file, const char * out_hist, const int s1, const int s2) {
-    ofstream ofs(out_file, ofstream::out | ofstream::binary);
-    ofstream ofs2(out_hist, ofstream::out);
+    FILE * out = fopen(out_file, "w");
+    FILE * out2 = fopen(out_hist, "w");
 
-    if(!ofs.is_open() || !ofs2.is_open()) {
+    if(out == NULL || out2 == NULL) {
         cout << "writing err" << endl;
         return;
     }
 
-    ofs << "P6" << endl;
-    ofs << s1 << endl;
-    ofs << s2 << endl;
-    ofs << "255" << endl;
+    fputs("P6\n", out);
+    fprintf(out, "%d\n", s1);
+    fprintf(out, "%d\n", s2);
+    fputs("255\n", out);
 
     int size = s1 * s2, r, g, b, x;
+
     uint8_t r_l, r_c, r_n;
     uint8_t g_l, g_c, g_n;
     uint8_t b_l, b_c, b_n;
@@ -107,9 +115,9 @@ void do_magic(const char * out_file, const char * out_hist, const int s1, const 
         g = image_in->g[i];
         b = image_in->b[i];
 
-        ofs.put(r);
-        ofs.put(g);
-        ofs.put(b);
+        fputc(r, out);
+        fputc(g, out);
+        fputc(b, out);
 
         x = round(0.2126 * r + 0.7152 * g + 0.0722 * b);
         add(x);
@@ -121,9 +129,9 @@ void do_magic(const char * out_file, const char * out_hist, const int s1, const 
         g = image_in->g[i * s1];
         b = image_in->b[i * s1];
 
-        ofs.put(r);
-        ofs.put(g);
-        ofs.put(b);
+        fputc(r, out);
+        fputc(g, out);
+        fputc(b, out);
 
         x = round(0.2126 * r + 0.7152 * g + 0.0722 * b);
         add(x);
@@ -150,9 +158,9 @@ void do_magic(const char * out_file, const char * out_hist, const int s1, const 
             b = b > 0 ? b : 0;
             b = b > 255 ? 255 : b;
 
-            ofs.put(r);
-            ofs.put(g);
-            ofs.put(b);
+            fputc(r, out);
+            fputc(g, out);
+            fputc(b, out);
 
             x = round(0.2126 * r + 0.7152 * g + 0.0722 * b);
             add(x);
@@ -172,13 +180,12 @@ void do_magic(const char * out_file, const char * out_hist, const int s1, const 
         g = image_in->g[i * s1 + s1 - 1];
         b = image_in->b[i * s1 + s1 - 1];
 
-        ofs.put(r);
-        ofs.put(g);
-        ofs.put(b);
+        fputc(r, out);
+        fputc(g, out);
+        fputc(b, out);
 
         x = round(0.2126 * r + 0.7152 * g + 0.0722 * b);
         add(x);
-
     }
 
     for (int i = size - s1; i < size; ++i) {
@@ -186,19 +193,18 @@ void do_magic(const char * out_file, const char * out_hist, const int s1, const 
         g = image_in->g[i];
         b = image_in->b[i];
 
-        ofs.put(r);
-        ofs.put(g);
-        ofs.put(b);
+        fputc(r, out);
+        fputc(g, out);
+        fputc(b, out);
 
         x = round(0.2126 * r + 0.7152 * g + 0.0722 * b);
         add(x);
-
     }
 
-    ofs2 << histogram[0] << ' ' << histogram[1] << ' ' << histogram[2] << ' ' << histogram[3] << ' ' << histogram[4] << ' ';
+    fprintf(out2, "%d %d %d %d %d ", histogram[0], histogram[1], histogram[2], histogram[3], histogram[4]);
 
-    ofs2.close();
-    ofs.close();
+    fclose(out);
+    fclose(out2);
 }
 
 int main(int argc, char ** argv) {
