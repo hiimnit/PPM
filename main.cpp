@@ -55,7 +55,7 @@ bool readFile(const char * in_file, int * __restrict__ s1, int * __restrict__ s2
     }
 
     string P6;
-    int s255, size;
+    int size;
     char buffer [100];
 
     fgets(buffer, 100, in); // prvni line "P6"
