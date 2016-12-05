@@ -91,6 +91,9 @@ void do_magic(const char * out_file, const char * out_hist, const int s1, const 
     ofs << "255" << endl;
 
     int size = s1 * s2, r, g, b, x;
+    uint8_t r_l, r_c, r_n;
+    uint8_t g_l, g_c, g_n;
+    uint8_t b_l, b_c, b_n;
 
     histogram[0] = 0;
     histogram[1] = 0;
@@ -125,26 +128,44 @@ void do_magic(const char * out_file, const char * out_hist, const int s1, const 
         x = round(0.2126 * r + 0.7152 * g + 0.0722 * b);
         add(x);
 
+        r_l = r;
+        r_c = image_in->r[i * s1 + 1];
+        r_n = image_in->r[i * s1 + 2];
+        g_l = g;
+        g_c = image_in->g[i * s1 + 1];
+        g_n = image_in->g[i * s1 + 2];
+        b_l = b;
+        b_c = image_in->b[i * s1 + 1];
+        b_n = image_in->b[i * s1 + 2];
+
         for (int j = i * s1 + 1; j < i * s1 + s1 - 1; ++j) {
-            r = 5 * image_in->r[j] - image_in->r[j - s1] - image_in->r[j + s1] - image_in->r[j - 1] - image_in->r[j + 1];
+            r = 5 * r_c - image_in->r[j - s1] - image_in->r[j + s1] - r_l - r_n;
+            g = 5 * g_c - image_in->g[j - s1] - image_in->g[j + s1] - g_l - g_n;
+            b = 5 * b_c - image_in->b[j - s1] - image_in->b[j + s1] - b_l - b_n;
+
             r = r > 0 ? r : 0;
             r = r > 255 ? 255 : r;
-
-            g = 5 * image_in->g[j] - image_in->g[j - s1] - image_in->g[j + s1] - image_in->g[j - 1] - image_in->g[j + 1];
             g = g > 0 ? g : 0;
             g = g > 255 ? 255 : g;
-
-            b = 5 * image_in->b[j] - image_in->b[j - s1] - image_in->b[j + s1] - image_in->b[j - 1] - image_in->b[j + 1];
             b = b > 0 ? b : 0;
             b = b > 255 ? 255 : b;
 
-            ofs.put((char)r);
-            ofs.put((char)g);
-            ofs.put((char)b);
+            ofs.put(r);
+            ofs.put(g);
+            ofs.put(b);
 
             x = round(0.2126 * r + 0.7152 * g + 0.0722 * b);
             add(x);
 
+            r_l = r_c;
+            r_c = r_n;
+            r_n = image_in->r[j + 2];
+            g_l = g_c;
+            g_c = g_n;
+            g_n = image_in->g[j + 2];
+            b_l = b_c;
+            b_c = b_n;
+            b_n = image_in->b[j + 2];
         }
 
         r = image_in->r[i * s1 + s1 - 1];
