@@ -8,7 +8,6 @@
 using namespace std;
 
 struct img {
-    // uint8_t
     uint8_t * r;
     uint8_t * g;
     uint8_t * b;
@@ -31,7 +30,6 @@ struct img {
 };
 
 img * image_in;
-img * image_out;
 int histogram[5];
 
 // Subinterval:	0 - 50 51 - 101 102 - 152 153 - 203 204 - 255
@@ -78,7 +76,7 @@ bool readFile(const char * in_file, int * __restrict__ s1, int * __restrict__ s2
     return true;
 }
 
-void writeFile(const char * out_file, const char * out_hist, const int s1, const int s2) {
+void do_magic(const char * out_file, const char * out_hist, const int s1, const int s2) {
     ofstream ofs(out_file, ofstream::out | ofstream::binary);
     ofstream ofs2(out_hist, ofstream::out);
 
@@ -92,60 +90,7 @@ void writeFile(const char * out_file, const char * out_hist, const int s1, const
     ofs << s2 << endl;
     ofs << "255" << endl;
 
-    int x;
-
-    uint8_t r, g, b;
-
-    // cela prvni a posledni rada by sla zapsat ze vstupu
-    for (int i = 0; i < s2; ++i) {
-        // prvni pixel ze vstupniho souboru
-        r = image_in->r[i * s1];
-        g = image_in->g[i * s1];
-        b = image_in->b[i * s1];
-
-        ofs.put(r);
-        ofs.put(g);
-        ofs.put(b);
-
-        x = round(0.2126 * r + 0.7152 * g + 0.0722 * b);
-        add(x);
-
-        for (int j = i * s1 + 1; j < i * s1 + s1 - 1; ++j) {
-            r = image_out->r[j];
-            g = image_out->g[j];
-            b = image_out->b[j];
-
-            ofs.put(r);
-            ofs.put(g);
-            ofs.put(b);
-
-            x = round(0.2126 * r + 0.7152 * g + 0.0722 * b);
-            add(x);
-        }
-        // posledni pixel ze vstupniho souboru
-        r = image_in->r[i * s1 + s1 - 1];
-        g = image_in->g[i * s1 + s1 - 1];
-        b = image_in->b[i * s1 + s1 - 1];
-
-        ofs.put(r);
-        ofs.put(g);
-        ofs.put(b);
-
-        x = round(0.2126 * r + 0.7152 * g + 0.0722 * b);
-        add(x);
-    }
-
-    ofs2 << histogram[0] << ' ' << histogram[1] << ' ' << histogram[2] << ' ' << histogram[3] << ' ' << histogram[4] << ' ';
-
-    ofs2.close();
-    ofs.close();
-}
-
-void do_magic(const int s1, const int s2) {
-    int size = s1 * s2;
-    image_out = new img(size);
-
-    int r, g, b;
+    int size = s1 * s2, r, g, b, x;
 
     histogram[0] = 0;
     histogram[1] = 0;
@@ -159,24 +104,60 @@ void do_magic(const int s1, const int s2) {
         g = image_in->g[i];
         b = image_in->b[i];
 
-        image_out->add(r, g, b);
+        ofs.put(r);
+        ofs.put(g);
+        ofs.put(b);
+
+        x = round(0.2126 * r + 0.7152 * g + 0.0722 * b);
+        add(x);
     }
 
     // asi zbytecne komplikovany
-    for (int i = s1; i < size - s1; ++i) {
-        r = 5 * image_in->r[i] - image_in->r[i - s1] - image_in->r[i + s1] - image_in->r[i - 1] - image_in->r[i + 1];
-        r = r > 0 ? r : 0;
-        r = r > 255 ? 255 : r;
+    for (int i = 1; i < s2 - 1; ++i) {
+        r = image_in->r[i * s1];
+        g = image_in->g[i * s1];
+        b = image_in->b[i * s1];
 
-        g = 5 * image_in->g[i] - image_in->g[i - s1] - image_in->g[i + s1] - image_in->g[i - 1] - image_in->g[i + 1];
-        g = g > 0 ? g : 0;
-        g = g > 255 ? 255 : g;
+        ofs.put(r);
+        ofs.put(g);
+        ofs.put(b);
 
-        b = 5 * image_in->b[i] - image_in->b[i - s1] - image_in->b[i + s1] - image_in->b[i - 1] - image_in->b[i + 1];
-        b = b > 0 ? b : 0;
-        b = b > 255 ? 255 : b;
+        x = round(0.2126 * r + 0.7152 * g + 0.0722 * b);
+        add(x);
 
-        image_out->add(r, g, b);
+        for (int j = i * s1 + 1; j < i * s1 + s1 - 1; ++j) {
+            r = 5 * image_in->r[j] - image_in->r[j - s1] - image_in->r[j + s1] - image_in->r[j - 1] - image_in->r[j + 1];
+            r = r > 0 ? r : 0;
+            r = r > 255 ? 255 : r;
+
+            g = 5 * image_in->g[j] - image_in->g[j - s1] - image_in->g[j + s1] - image_in->g[j - 1] - image_in->g[j + 1];
+            g = g > 0 ? g : 0;
+            g = g > 255 ? 255 : g;
+
+            b = 5 * image_in->b[j] - image_in->b[j - s1] - image_in->b[j + s1] - image_in->b[j - 1] - image_in->b[j + 1];
+            b = b > 0 ? b : 0;
+            b = b > 255 ? 255 : b;
+
+            ofs.put((char)r);
+            ofs.put((char)g);
+            ofs.put((char)b);
+
+            x = round(0.2126 * r + 0.7152 * g + 0.0722 * b);
+            add(x);
+
+        }
+
+        r = image_in->r[i * s1 + s1 - 1];
+        g = image_in->g[i * s1 + s1 - 1];
+        b = image_in->b[i * s1 + s1 - 1];
+
+        ofs.put(r);
+        ofs.put(g);
+        ofs.put(b);
+
+        x = round(0.2126 * r + 0.7152 * g + 0.0722 * b);
+        add(x);
+
     }
 
     for (int i = size - s1; i < size; ++i) {
@@ -184,8 +165,19 @@ void do_magic(const int s1, const int s2) {
         g = image_in->g[i];
         b = image_in->b[i];
 
-        image_out->add(r, g, b);
+        ofs.put(r);
+        ofs.put(g);
+        ofs.put(b);
+
+        x = round(0.2126 * r + 0.7152 * g + 0.0722 * b);
+        add(x);
+
     }
+
+    ofs2 << histogram[0] << ' ' << histogram[1] << ' ' << histogram[2] << ' ' << histogram[3] << ' ' << histogram[4] << ' ';
+
+    ofs2.close();
+    ofs.close();
 }
 
 int main(int argc, char ** argv) {
@@ -201,14 +193,12 @@ int main(int argc, char ** argv) {
 
     if(!readFile(argv[1], &s1, &s2)) return 2;
     cout << "PPM image " << s1 << "x" << s2 << endl;
-    do_magic(s1, s2);
-    writeFile(argv[2], argv[3], s1, s2);
+    do_magic(argv[2], argv[3], s1, s2);
 
     clock_gettime( CLOCK_REALTIME, &stop);
     double accum = ( stop.tv_sec - start.tv_sec )*1000.0 + ( stop.tv_nsec - start.tv_nsec )/ 1000000.0;
     printf( "Time: %.6lf ms\n", accum );
 
     delete image_in;
-    delete image_out;
     return 0;
 }
