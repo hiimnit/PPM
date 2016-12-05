@@ -1,42 +1,40 @@
 #include <iostream>
 #include <fstream>
 #include <cmath>
+#include <cstdint>
+#include <unistd.h>
+#include <time.h>
 
 using namespace std;
 
-/*
- *  Dále pak spočítejte a zapište do souboru histogram zaostřeného obrázku ve stupních šedi. Pro konverzi z RGB do grayscale použijte model pro výpočet jasu:
- *  Y = round(0.2126*R + 0.7152*G + 0.0722*B)
- *  Histogram spočítejte pro zleva uzavřený, zprava otevřený interval < i*L/N; (i+1)*L/N ) vyjma posledního intervalu kdy je i zprava uzavřený; pro i=0…N-1, kde L=255 a N=5 je počet intervalů; Jinýmy slovy, interval <0; 255> rozdělte na tyto části:
- */
-
 struct img {
-    unsigned char * r;
-    unsigned char * g;
-    unsigned char * b;
-    img(const int size) : size(size), current(0) {
-        r = new unsigned char[size];
-        g = new unsigned char[size];
-        b = new unsigned char[size];
+    // uint8_t
+    uint8_t * r;
+    uint8_t * g;
+    uint8_t * b;
+    img(const int size) : current(0) {
+        r = new uint8_t[size];
+        g = new uint8_t[size];
+        b = new uint8_t[size];
     }
     ~img() {
         delete[] r;
         delete[] g;
         delete[] b;
     }
-    void add(const unsigned char x, const unsigned char y, const unsigned char z) {
+    void add(const uint8_t x, const uint8_t y, const uint8_t z) {
         r[current] = x;
         g[current] = y;
         b[current++] = z;
     }
-    int size, current;
+    int current;
 };
 
 img * image_in;
 img * image_out;
 int histogram[5];
 
-//  *  Subinterval:	od 0 do 50	od 51 do 101	od 102 do 152	od 153 do 203	od 204 do 255
+// Subinterval:	0 - 50 51 - 101 102 - 152 153 - 203 204 - 255
 void add(const int x) {
     int i;
     if (x < 51) i = 0;
@@ -67,7 +65,7 @@ bool readFile(const char * in_file, int * __restrict__ s1, int * __restrict__ s2
     size = *s1 * *s2;
     image_in = new img(size);
 
-    unsigned char r, g, b;
+    uint8_t r, g, b;
 
     for (int i = 0; i < size; ++i) {
         r = ifs.get();
@@ -89,33 +87,57 @@ void writeFile(const char * out_file, const char * out_hist, const int s1, const
         return;
     }
 
-    ofs2 << histogram[0] << ' ' << histogram[1] << ' ' << histogram[2] << ' ' << histogram[3] << ' ' << histogram[4];
-    ofs2.close();
-
     ofs << "P6" << endl;
     ofs << s1 << endl;
     ofs << s2 << endl;
     ofs << "255" << endl;
 
-    int size = s1 * s2;
+    int x;
+
+    uint8_t r, g, b;
 
     // cela prvni a posledni rada by sla zapsat ze vstupu
     for (int i = 0; i < s2; ++i) {
         // prvni pixel ze vstupniho souboru
-        ofs.put(image_in->r[i * s1]);
-        ofs.put(image_in->g[i * s1]);
-        ofs.put(image_in->b[i * s1]);
+        r = image_in->r[i * s1];
+        g = image_in->g[i * s1];
+        b = image_in->b[i * s1];
+
+        ofs.put(r);
+        ofs.put(g);
+        ofs.put(b);
+
+        x = round(0.2126 * r + 0.7152 * g + 0.0722 * b);
+        add(x);
+
         for (int j = i * s1 + 1; j < i * s1 + s1 - 1; ++j) {
-            ofs.put(image_out->r[j]);
-            ofs.put(image_out->g[j]);
-            ofs.put(image_out->b[j]);
+            r = image_out->r[j];
+            g = image_out->g[j];
+            b = image_out->b[j];
+
+            ofs.put(r);
+            ofs.put(g);
+            ofs.put(b);
+
+            x = round(0.2126 * r + 0.7152 * g + 0.0722 * b);
+            add(x);
         }
         // posledni pixel ze vstupniho souboru
-        ofs.put(image_in->r[i * s1 + s1 - 1]);
-        ofs.put(image_in->g[i * s1 + s1 - 1]);
-        ofs.put(image_in->b[i * s1 + s1 - 1]);
+        r = image_in->r[i * s1 + s1 - 1];
+        g = image_in->g[i * s1 + s1 - 1];
+        b = image_in->b[i * s1 + s1 - 1];
+
+        ofs.put(r);
+        ofs.put(g);
+        ofs.put(b);
+
+        x = round(0.2126 * r + 0.7152 * g + 0.0722 * b);
+        add(x);
     }
 
+    ofs2 << histogram[0] << ' ' << histogram[1] << ' ' << histogram[2] << ' ' << histogram[3] << ' ' << histogram[4] << ' ';
+
+    ofs2.close();
     ofs.close();
 }
 
@@ -124,7 +146,6 @@ void do_magic(const int s1, const int s2) {
     image_out = new img(size);
 
     int r, g, b;
-    int x;
 
     histogram[0] = 0;
     histogram[1] = 0;
@@ -137,9 +158,8 @@ void do_magic(const int s1, const int s2) {
         r = image_in->r[i];
         g = image_in->g[i];
         b = image_in->b[i];
+
         image_out->add(r, g, b);
-        x = round(0.2126 * r + 0.7152 * g + 0.0722 * b);
-        add(x);
     }
 
     // asi zbytecne komplikovany
@@ -156,9 +176,6 @@ void do_magic(const int s1, const int s2) {
         b = b > 0 ? b : 0;
         b = b > 255 ? 255 : b;
 
-        x = round(0.2126 * r + 0.7152 * g + 0.0722 * b);
-        add(x);
-
         image_out->add(r, g, b);
     }
 
@@ -166,9 +183,8 @@ void do_magic(const int s1, const int s2) {
         r = image_in->r[i];
         g = image_in->g[i];
         b = image_in->b[i];
+
         image_out->add(r, g, b);
-        x = round(0.2126 * r + 0.7152 * g + 0.0722 * b);
-        add(x);
     }
 }
 
@@ -177,12 +193,20 @@ int main(int argc, char ** argv) {
         cout << "usage : ./a.out in.file out.file hist.file" << endl;
         return 1;
     }
+
     int s1, s2;
+    struct timespec start, stop;
+
+    clock_gettime( CLOCK_REALTIME, &start);
 
     if(!readFile(argv[1], &s1, &s2)) return 2;
     cout << "PPM image " << s1 << "x" << s2 << endl;
     do_magic(s1, s2);
     writeFile(argv[2], argv[3], s1, s2);
+
+    clock_gettime( CLOCK_REALTIME, &stop);
+    double accum = ( stop.tv_sec - start.tv_sec )*1000.0 + ( stop.tv_nsec - start.tv_nsec )/ 1000000.0;
+    printf( "Time: %.6lf ms\n", accum );
 
     delete image_in;
     delete image_out;
