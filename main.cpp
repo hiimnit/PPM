@@ -67,13 +67,14 @@ bool readFile(const char * in_file, int * __restrict__ s1, int * __restrict__ s2
     size = *s1 * *s2;
     image_in = new img(size);
 
-    uint8_t buf[3];
+    uint8_t * buf = new uint8_t[3 * *s1];
 
-    for (int i = 0; i < size; ++i) {
-        fread(buf, 3, 1, in);
-        image_in->add(buf[0], buf[1], buf[2]);
+    for (int i = 0; i < *s2; ++i) {
+        fread(buf, 1, 3 * *s1, in);
+        for (int j = 0; j < 3 * *s1; j += 3) image_in->add(buf[j], buf[j + 1], buf[j + 2]);
     }
 
+    delete[] buf;
     fclose(in);
     return true;
 }
