@@ -25,7 +25,8 @@ struct img {
     void add(const uint8_t x, const uint8_t y, const uint8_t z) {
         r[current] = x;
         g[current] = y;
-        b[current++] = z;
+        b[current] = z;
+        current++;
     }
     int current;
 };
@@ -87,9 +88,9 @@ bool readFile(const char * in_file, int * __restrict__ s1, int * __restrict__ s2
     return true;
 }
 
-void do_magic(const char * out_file, const char * out_hist, const int s1, const int s2) {
-    FILE * out = fopen(out_file, "w");
-    FILE * out2 = fopen(out_hist, "w");
+void do_magic(const int s1, const int s2) {
+    FILE * out = fopen("output.ppm", "w");
+    FILE * out2 = fopen("output.txt", "w");
 
     if(out == NULL || out2 == NULL) {
         cout << "writing err" << endl;
@@ -197,23 +198,25 @@ void do_magic(const char * out_file, const char * out_hist, const int s1, const 
 }
 
 int main(int argc, char ** argv) {
-    if(argc != 4) {
-        cout << "usage : ./a.out in.file out.file hist.file" << endl;
+    if(argc != 2) {
+        cout << " usage : ./a.out in.file" << endl;
+        cout << "output : output.ppm - image" << endl;
+        cout << "         output.txt - histogram" << endl;
         return 1;
     }
 
     int s1, s2;
     struct timespec start, stop;
 
-    clock_gettime( CLOCK_REALTIME, &start);
+    clock_gettime(CLOCK_REALTIME, &start);
 
     if(!readFile(argv[1], &s1, &s2)) return 2;
     cout << "PPM image " << s1 << "x" << s2 << endl;
-    do_magic(argv[2], argv[3], s1, s2);
+    do_magic(s1, s2);
 
-    clock_gettime( CLOCK_REALTIME, &stop);
-    double accum = ( stop.tv_sec - start.tv_sec )*1000.0 + ( stop.tv_nsec - start.tv_nsec )/ 1000000.0;
-    printf( "Time: %.6lf ms\n", accum );
+    clock_gettime(CLOCK_REALTIME, &stop);
+    double accum = (stop.tv_sec - start.tv_sec) * 1000.0 + (stop.tv_nsec - start.tv_nsec) / 1000000.0;
+    printf("Time: %.6lf ms\n", accum);
 
     delete image_in;
     return 0;
