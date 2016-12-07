@@ -69,9 +69,17 @@ bool readFile(const char * in_file, int * __restrict__ s1, int * __restrict__ s2
 
     uint8_t * buf = new uint8_t[3 * *s1];
 
+    int Q = *s1 % 4;
+
     for (int i = 0; i < *s2; ++i) {
         fread(buf, 1, 3 * *s1, in);
-        for (int j = 0; j < 3 * *s1; j += 3) image_in->add(buf[j], buf[j + 1], buf[j + 2]);
+        for (int j = 0; j < 3 * Q; j += 3) image_in->add(buf[j], buf[j + 1], buf[j + 2]);
+        for (int j = 3 * Q; j < 3 * *s1; j += 12) {
+            image_in->add(buf[j], buf[j + 1], buf[j + 2]);
+            image_in->add(buf[j + 3], buf[j + 4], buf[j + 5]);
+            image_in->add(buf[j + 6], buf[j + 7], buf[j + 8]);
+            image_in->add(buf[j + 9], buf[j + 10], buf[j + 11]);
+        }
     }
 
     delete[] buf;
