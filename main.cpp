@@ -59,24 +59,19 @@ bool readFile(const char * in_file, int * __restrict__ s1, int * __restrict__ s2
     char buffer [100];
 
     fgets(buffer, 100, in); // prvni line "P6"
-    cout << buffer;
     fscanf(in, "%d", &*s1); // prvni rozmer
     fscanf(in, "%d", &*s2); // druhy rozmer
     fgets(buffer, 100, in); // 255
     fgets(buffer, 100, in); // 255
 
-    cout << buffer;
-
     size = *s1 * *s2;
     image_in = new img(size);
 
-    uint8_t r, g, b;
+    uint8_t buf[3];
 
     for (int i = 0; i < size; ++i) {
-        r = fgetc(in);
-        g = fgetc(in);
-        b = fgetc(in);
-        image_in->add(r, g, b);
+        fread(buf, 3, 1, in);
+        image_in->add(buf[0], buf[1], buf[2]);
     }
 
     fclose(in);
@@ -99,6 +94,8 @@ void do_magic(const char * out_file, const char * out_hist, const int s1, const 
 
     int size = s1 * s2, r, g, b, x;
 
+    uint8_t * buffer = new uint8_t[3 * s1];
+
     uint8_t r_l, r_c, r_n;
     uint8_t g_l, g_c, g_n;
     uint8_t b_l, b_c, b_n;
@@ -110,18 +107,20 @@ void do_magic(const char * out_file, const char * out_hist, const int s1, const 
     histogram[4] = 0;
 
     // tyhle dva for vyhodit, pocitat round() na vypisu
-    for (int i = 0; i < s1; ++i) {
+    for (int i = 0, j = 0; i < s1; ++i, j += 3) {
         r = image_in->r[i];
         g = image_in->g[i];
         b = image_in->b[i];
 
-        fputc(r, out);
-        fputc(g, out);
-        fputc(b, out);
+        buffer[j] = r;
+        buffer[j + 1] = g;
+        buffer[j + 2] = b;
 
         x = round(0.2126 * r + 0.7152 * g + 0.0722 * b);
         add(x);
     }
+
+    fwrite(buffer, 1, 3 * s1, out);
 
     // asi zbytecne komplikovany
     for (int i = 1; i < s2 - 1; ++i) {
@@ -129,9 +128,9 @@ void do_magic(const char * out_file, const char * out_hist, const int s1, const 
         g = image_in->g[i * s1];
         b = image_in->b[i * s1];
 
-        fputc(r, out);
-        fputc(g, out);
-        fputc(b, out);
+        buffer[0] = r;
+        buffer[1] = g;
+        buffer[2] = b;
 
         x = round(0.2126 * r + 0.7152 * g + 0.0722 * b);
         add(x);
@@ -146,7 +145,7 @@ void do_magic(const char * out_file, const char * out_hist, const int s1, const 
         b_c = image_in->b[i * s1 + 1];
         b_n = image_in->b[i * s1 + 2];
 
-        for (int j = i * s1 + 1; j < i * s1 + s1 - 1; ++j) {
+        for (int j = i * s1 + 1, l = 3; j < i * s1 + s1 - 1; ++j, l += 3) {
             r = 5 * r_c - image_in->r[j - s1] - image_in->r[j + s1] - r_l - r_n;
             g = 5 * g_c - image_in->g[j - s1] - image_in->g[j + s1] - g_l - g_n;
             b = 5 * b_c - image_in->b[j - s1] - image_in->b[j + s1] - b_l - b_n;
@@ -158,9 +157,9 @@ void do_magic(const char * out_file, const char * out_hist, const int s1, const 
             b = b > 0 ? b : 0;
             b = b > 255 ? 255 : b;
 
-            fputc(r, out);
-            fputc(g, out);
-            fputc(b, out);
+            buffer[l] = r;
+            buffer[l + 1] = g;
+            buffer[l + 2] = b;
 
             x = round(0.2126 * r + 0.7152 * g + 0.0722 * b);
             add(x);
@@ -180,29 +179,34 @@ void do_magic(const char * out_file, const char * out_hist, const int s1, const 
         g = image_in->g[i * s1 + s1 - 1];
         b = image_in->b[i * s1 + s1 - 1];
 
-        fputc(r, out);
-        fputc(g, out);
-        fputc(b, out);
+        buffer[3 * s1 - 3] = r;
+        buffer[3 * s1 - 2] = g;
+        buffer[3 * s1 - 1] = b;
 
         x = round(0.2126 * r + 0.7152 * g + 0.0722 * b);
         add(x);
+
+        fwrite(buffer, 1, 3 * s1, out);
     }
 
-    for (int i = size - s1; i < size; ++i) {
+    for (int i = size - s1, j = 0; i < size; ++i, j += 3) {
         r = image_in->r[i];
         g = image_in->g[i];
         b = image_in->b[i];
 
-        fputc(r, out);
-        fputc(g, out);
-        fputc(b, out);
+        buffer[j] = r;
+        buffer[j + 1] = g;
+        buffer[j + 2] = b;
 
         x = round(0.2126 * r + 0.7152 * g + 0.0722 * b);
         add(x);
     }
 
+    fwrite(buffer, 1, 3 * s1, out);
+
     fprintf(out2, "%d %d %d %d %d ", histogram[0], histogram[1], histogram[2], histogram[3], histogram[4]);
 
+    delete[] buffer;
     fclose(out);
     fclose(out2);
 }
